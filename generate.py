@@ -16,7 +16,7 @@ def total_magnification(u):
 def rel_lense_motion(uo, t, tE, to):
     """ Calculates the relative lens motion 'u' from the time and closest separation
     parameters. """
-    return (uo**2) + ( (x_axis_value(t, to, tE)**2) )**(1/2)
+    return ( (uo**2) + (x_axis_value(t, to, tE)**2) )** (1/2)
 
 def x_axis_value(t, to, tE):
     """Calculates an alternative x axis value."""
