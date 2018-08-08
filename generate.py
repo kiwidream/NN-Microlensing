@@ -26,52 +26,72 @@ def generate_values():
     """ Plots and displays a graph of magnitude and time. """
     time_list = []
     mag_list = []  
-
+    sigma = []
+    no_noise = []
+    no_noise_time = []
     plot = None
     #uo (the time of greatest magnification): values between 0 and 1.5
     #tE (the time to cross the Einstien Radius): values in increments of 5
     #t (the observation time) : values from 1 to 100
     #e_time (controls x axis values) : True or False
-    uo = random.uniform(0, 1.5)
+    uo = random.uniform(0, 1)
     tE = random.uniform(2, 30)
     to = 7668.97
-    percent_noise = 0.04
+    percent_noise = 0.05
     shift_range = 0.03 * to
     shift = int(random.uniform(-shift_range/2, shift_range/2))
-
-    for t in range(int(to*0.99)*2-shift, int(to*1.01)*2-shift):
-        t /= 2
-        if random.randint(0, 5) == 0:
-            continue
+    skip = 0
+    for t in range(int(to*0.98)-shift, int(to*1.02)-shift, 3):
         u = rel_lense_motion(uo, t, tE, to)
         A = total_magnification(u)
+        
+        no_noise.append(A)
+        no_noise_time.append(t)
+        
+        if skip > 0:
+            skip -= 1
+        if random.randint(0, 2) == 0 or skip > 0:
+            continue
+        if random.randint(0, 15) == 0:
+            skip = random.randint(0, 10)        
+
         time_list.append(t)
         mag_list.append(A)
-    
+        
     max_mag = max(mag_list)
     for i in range(len(mag_list)):
-        mag_list[i] += max_mag * random.uniform((1-percent_noise), (1+percent_noise))
+        noise = random.uniform((1-percent_noise), (1+percent_noise))
+        mag_list[i] = mag_list[i] * noise
+        abs_noise = max(percent_noise / 3, abs(1-noise))
+        sigma.append(max_mag * random.uniform(abs_noise, abs_noise*2))
         
     #Following code responsible for data point prints in shell
     print("time (t):", t)
     print("magnification:", A)
     print()
         
-    return time_list, mag_list
+    return time_list, mag_list, sigma, no_noise, no_noise_time
 
 def draw_plot(event):
-    global plot, ax
-    time_list, mag_list = generate_values()
+    global plot, ax, eline
+    time_list, mag_list, sigma, no_noise, no_noise_time = generate_values()
     
     if plot is None:
-        plot, = ax.plot(time_list, mag_list)
+        plot, = ax.plot(no_noise_time,no_noise, color=(0,0,0,0.3))
+        eline = ax.errorbar(time_list,mag_list,sigma,color='r',fmt='.')
         plt.ion()
         plt.title("Paczynski Curve of a Gravitational Microlensing Event")
     
         plt.xlabel("Time, t")
         plt.ylabel("Magnification, A")      
     else:
-        plot.set_data(time_list, mag_list)
+        plot.set_data(no_noise_time, no_noise)
+        eline[0].remove()
+        for line in eline[1]:
+            line.remove()
+        for line in eline[2]:
+            line.remove()
+        eline = ax.errorbar(time_list,mag_list,sigma,color='r',fmt='.')
         ax.relim()
         ax.autoscale_view(True,True,True)        
         plt.draw()
