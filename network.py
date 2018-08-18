@@ -112,6 +112,14 @@ class Network(object):
             a = sigmoid(np.dot(w, a)+b)
         return a
 
+    def activations(self, a):
+        """Return the output of the network if ``a`` is input."""
+        activations = [a]
+        for b, w in zip(self.biases, self.weights):
+            a = sigmoid(np.dot(w, a)+b)
+            activations.append(a)
+        return activations
+
     def SGD(self, training_data, epochs, mini_batch_size, eta,
             lmbda = 0.0,
             evaluation_data=None,
@@ -173,7 +181,7 @@ class Network(object):
             if monitor_training_accuracy:
                 accuracy = self.accuracy(training_data, convert=True)
                 training_accuracy.append(accuracy)
-                print("Accuracy on training data: {} / {}".format(accuracy, n))
+                print("Accuracy on training data: {}%".format(round(100*accuracy/n,2)))
             if monitor_evaluation_cost:
                 cost = self.total_cost(evaluation_data, lmbda, convert=True)
                 evaluation_cost.append(cost)
@@ -181,7 +189,7 @@ class Network(object):
             if monitor_evaluation_accuracy:
                 accuracy = self.accuracy(evaluation_data)
                 evaluation_accuracy.append(accuracy)
-                print("Accuracy on evaluation data: {} / {}".format(self.accuracy(evaluation_data), n_data))
+                print("Accuracy on evaluation data: {}%".format(round(100*self.accuracy(evaluation_data)/n_data,2)))
 
             # Early stopping:
             if early_stopping_n > 0:

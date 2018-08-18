@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import time
+import statistics
 
 class LightCurve:
 
@@ -10,12 +11,16 @@ class LightCurve:
   CURVE_X_CLEAN = 3
   CURVE_Y_CLEAN = 4
 
+  INPUT_SIZE = 4
+  OUTPUT_SIZE = 2
+
   def __init__(self):
     self.input_neurons = []
     self.params = self.params or []
     self.curve = None
     self.size = 600
-    self.percent_noise = 0.05
+    self.percent_noise = 0.02
+    self.corr = [None, None]
     self.generate_params()
 
   def generate_params(self):
@@ -27,12 +32,49 @@ class LightCurve:
     pass
 
   def calculate_inputs(self):
-    """ TODO: Generate input neurons for NN """
-    pass
+    if self.curve is None:
+      self.generate_curve()
+
+    input_list = [self.ac_width, self.ac_max, self.ac_symm_max, self.ac_symm_width]
+    inputs = np.zeros((self.INPUT_SIZE, 1))
+    for i in range(self.INPUT_SIZE):
+      inputs[i] = input_list[i]()
+    return inputs
+
+  def ac_width(self):
+    return statistics.stdev(self.autocorrelate())
+
+  def ac_max(self):
+    return max(self.autocorrelate())
+
+  def ac_symm_max(self):
+    return max(self.autocorrelate(True))
+
+  def ac_symm_width(self):
+    return statistics.stdev(self.autocorrelate(True))
+
+  def autocorrelate(self, rev=False):
+    if self.corr[int(rev)] is not None:
+      return self.corr[int(rev)]
+
+    y = self.curve[:, self.CURVE_Y]
+    y2 = np.flip(y, axis=0) if rev else y
+    corr = np.correlate(y, y2, mode='same')
+    n = len(corr)
+
+    lengths = range(n, n//2, -1)
+    ac = corr[n//2:] / lengths
+
+    self.corr[int(rev)] = ac / ac[0] # Normalise
+
+    return self.corr[int(rev)]
 
   def expected_outputs(self):
     light_curves = [NonEvent, MicroLensing]
-    return [int(isinstance(self, curve_class)) for curve_class in light_curves]
+    outputs = np.zeros((self.OUTPUT_SIZE, 1))
+    for i in range(self.OUTPUT_SIZE):
+      outputs[i, 0] = int(isinstance(self, light_curves[i]))
+    return outputs
 
   def get_filters(self):
     return [self.noise_filter, self.sigma_filter, self.patchy_filter]
@@ -47,8 +89,7 @@ class LightCurve:
     return self.curve
 
   def noise_filter(self):
-    noise = [random.uniform((1-self.percent_noise), (1+self.percent_noise)) for _ in range(self.size)]
-    self.curve[:, self.CURVE_Y] = noise * self.curve[:, self.CURVE_Y]
+    self.curve[:, self.CURVE_Y] = np.random.normal(0, self.percent_noise, self.size) + self.curve[:, self.CURVE_Y]
 
   def patchy_filter(self):
     remove = []
@@ -59,15 +100,15 @@ class LightCurve:
       if random.randint(0, 1) == 0 or skip > 0:
         remove.append(i)
         continue
-      if random.randint(0, 15) == 0:
-        skip = random.randint(0, 10)
+      if random.randint(0, 20) == 0:
+        skip = random.randint(0, 8)
 
     self.curve = np.delete(self.curve, remove, axis=0)
     self.size -= len(remove)
 
   def sigma_filter(self):
     max_y = max(self.curve[:, self.CURVE_Y])
-    self.curve[:, self.CURVE_SIGMA] = [max_y * random.uniform(self.percent_noise/4, self.percent_noise/2) for _ in range(self.size)]
+    self.curve[:, self.CURVE_SIGMA] = max_y * np.random.normal(self.percent_noise / 2, self.percent_noise / 4, self.size)
 
 class NonEvent(LightCurve):
   def __init__(self, m=None, c=None):
@@ -128,4 +169,4 @@ class MicroLensing(LightCurve):
 
 if __name__ == '__main__':
   ml = MicroLensing()
-  print(ml.generate_curve())
+  print(ml.calculate_inputs())
