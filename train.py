@@ -156,7 +156,7 @@ def main():
   nn = Network(network_size)
   recent_progress = []
   types = [MicroLensing, NonEvent]
-  labels = ['AC_std', 'AC_max', 'SYM_std', 'SYM_max']
+  labels = ['AC_std', 'AC_max', 'SYM_std', 'SYM_max', 'excursion']
   labels += ["" for i in range(sum(network_size[1:-1]))]
   labels += [ev().__class__.__name__ for ev in types]
 

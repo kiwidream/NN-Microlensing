@@ -2,6 +2,7 @@ import numpy as np
 import random
 import time
 import statistics
+from raw_nodes import excursion
 
 class LightCurve:
 
@@ -11,7 +12,7 @@ class LightCurve:
   CURVE_X_CLEAN = 3
   CURVE_Y_CLEAN = 4
 
-  INPUT_SIZE = 4
+  INPUT_SIZE = 5
   OUTPUT_SIZE = 2
 
   def __init__(self):
@@ -35,7 +36,7 @@ class LightCurve:
     if self.curve is None:
       self.generate_curve()
 
-    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max]
+    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion]
     inputs = np.zeros((self.INPUT_SIZE, 1))
     for i in range(self.INPUT_SIZE):
       inputs[i] = input_list[i]()
@@ -52,6 +53,9 @@ class LightCurve:
 
   def ac_symm_width(self):
     return statistics.stdev(self.autocorrelate(True))
+
+  def excursion(self):
+    return excursion(self.curve[:, :2])
 
   def autocorrelate(self, rev=False):
     if self.corr[int(rev)] is not None:
