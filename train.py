@@ -8,7 +8,8 @@ import time
 from lightcurve import *
 from network import Network
 import matplotlib.patheffects as PathEffects
-#from scipy import optimize
+import multiprocessing as mp
+import datetime
 
 plot = None
 
@@ -38,7 +39,7 @@ def draw_plot(event):
   ax1.set_title(event.name)
   return event
 
-def draw_neural_net(ax, left, right, bottom, top, nn, activations, layer_text=None):
+def draw_neural_net(ax, left, right, bottom, top, nn, activations=None, layer_text=None):
   '''
   Draw a neural network cartoon using matplotilb.
 
@@ -70,11 +71,13 @@ def draw_neural_net(ax, left, right, bottom, top, nn, activations, layer_text=No
   v_spacing = (top - bottom)/float(max(layer_sizes))
   h_spacing = (right - left)/float(len(layer_sizes) - 1)
   ax.axis('off')
-  act_flatten = []
-  for n in range(len(layer_sizes)):
-    for m in range(layer_sizes[n]):
-      act_flatten.append(activations[n][m])
-  max_act = max(act_flatten)
+
+  if activations:
+    act_flatten = []
+    for n in range(len(layer_sizes)):
+      for m in range(layer_sizes[n]):
+        act_flatten.append(activations[n][m])
+    max_act = max(act_flatten)
 
   # Nodes
   for n, layer_size in enumerate(layer_sizes):
@@ -82,13 +85,20 @@ def draw_neural_net(ax, left, right, bottom, top, nn, activations, layer_text=No
     for m in range(layer_size):
       x = n*h_spacing + left
       y = layer_top - m*v_spacing
-      col = "%x" % int((activations[n][m] / max_act) * 15)
-      circle = plt.Circle((x,y), v_spacing/4., color='#'+col*6+'FF', ec='k', zorder=0)
+
+      col = "#FFFFFFFF"
+
+      if activations:
+        col = "%x" % int((activations[n][m] / max_act) * 15)
+        col = '#'+col*6+'FF'
+
+      circle = plt.Circle((x,y), v_spacing/4., color=col, ec='k', zorder=0)
       ax.add_artist(circle)
 
       # Node annotations
       if text:
         string = text.pop(0)
+        print(x, y)
         txt = ax.text(x, y, string, ha='center', va='center')
         txt.set_path_effects([PathEffects.withStroke(linewidth=5, foreground='w')])
 
@@ -106,44 +116,80 @@ def draw_neural_net(ax, left, right, bottom, top, nn, activations, layer_text=No
         line = plt.Line2D([n*h_spacing + left, (n + 1)*h_spacing + left], [layer_top_a - m*v_spacing, layer_top_b - o*v_spacing], c='#'+col, zorder=-1, linewidth=min(abs(weight), 5))
         ax.add_artist(line)
 
+def get_event(types):
+  event = types[random.randint(0, len(types)-1)]()
+  event.generate_curve()
+  return event
+
+def generation_process(q, types):
+  while True:
+    for i in range(100):
+      event = get_event(types)
+      x, y = event.calculate_inputs(), event.expected_outputs()
+      q.put((x, y))
+
+def human_format(num):
+  num = float('{:.3g}'.format(num))
+  magnitude = 0
+  while abs(num) >= 1000:
+    magnitude += 1
+    num /= 1000.0
+  return '{}{}'.format('{:f}'.format(num).rstrip('0').rstrip('.'), ['', 'K', 'M', 'B', 'T'][magnitude])
+
 def main():
   """ Executes the required calculations for an event, prints raw data and creates a graph. """
   args = sys.argv
   global ax1
 
+  if len(args) <= 1 or not args[1].isdigit():
+    print("Usage: python train.py NUM_CORES")
+    exit()
+
+  num_cores = int(args[1])
+
   fig = plt.figure(figsize=(7, 7))
   fig2 = plt.figure(figsize=(7, 7))
   ax1 = fig.add_subplot(111)
   plt.ion()
-  network_size = [LightCurve.INPUT_SIZE, 5, 5, LightCurve.OUTPUT_SIZE]
+  network_size = [LightCurve.INPUT_SIZE, 8, 8, LightCurve.OUTPUT_SIZE]
   nn = Network(network_size)
   recent_progress = []
   types = [MicroLensing, NonEvent]
-  labels = ['x'+str(i) for i in range(LightCurve.INPUT_SIZE)]
+  labels = ['AC_std', 'AV_max', 'SYM_std', 'SYM_max']
   labels += ["" for i in range(sum(network_size[1:-1]))]
   labels += [ev().__class__.__name__ for ev in types]
+
+  q = mp.Queue(maxsize=1000)
+  pool = mp.Pool(num_cores, initializer=generation_process, initargs=(q, types))
+  accuracies = []
+  total_gen = 0
   while True:
-    training_data = []
+    training_data = [q.get() for _ in range(500)]
+    total_gen += len(training_data)
 
-    for i in range(150):
-      event = types[random.randint(0, len(types)-1)]()
-      event.generate_curve()
-      x, y = event.calculate_inputs(), event.expected_outputs()
-      training_data.append((x, y))
+    draw_plot(get_event(types))
 
-    draw_plot(event)
+    _, _, _, training_accuracy = nn.SGD(np.array(training_data),10,50,2,monitor_training_accuracy=True)
 
-    nn.SGD(np.array(training_data),10,50,2,monitor_training_accuracy=True)
+    avg_acc = sum(training_accuracy) / len(training_accuracy) / len(training_data)
+    accuracies.insert(0, avg_acc)
+    accuracies = accuracies[:150]
     sys.stdout.flush()
 
     ax2 = fig2.gca()
 
-    activations = nn.activations(x)
-    draw_neural_net(ax2, .05, .95, .05, .95, nn, activations, labels)
+    draw_neural_net(ax2, .05, .95, .08, .98, nn, None, labels)
 
+    avg_acc = sum(accuracies) / len(accuracies)
+    txt = ax2.text(0.5, 0.06, "Current accuracy: "+str(round(100*avg_acc,2))+"%", color="#000000FF", ha='center', va='center')
+    txt = ax2.text(0.5, 0.03, "Total lightcurves generated: "+human_format(total_gen), color="#000000FF", ha='center', va='center')
+    txt = ax2.text(0.5, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), color="#666666FF", ha='center', va='center')
+    nn.save(datetime.datetime.now().strftime("NN-%Y-%m-%d.json"))
     plt.show()
     fig.canvas.draw()
     fig.canvas.flush_events()
+
+    fig2.savefig('nn.png')
     fig2.clf()
 
 
