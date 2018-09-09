@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import sys
@@ -35,7 +37,7 @@ def draw_plot(event):
     ax1.relim()
     ax1.autoscale_view(True,True,True)
 
-  plt.draw()
+  #plt.draw()
   ax1.set_title(event.name)
   return event
 
@@ -98,7 +100,6 @@ def draw_neural_net(ax, left, right, bottom, top, nn, activations=None, layer_te
       # Node annotations
       if text:
         string = text.pop(0)
-        print(x, y)
         txt = ax.text(x, y, string, ha='center', va='center')
         txt.set_path_effects([PathEffects.withStroke(linewidth=5, foreground='w')])
 
@@ -147,9 +148,9 @@ def main():
 
   num_cores = int(args[1])
 
-  fig = plt.figure(figsize=(7, 7))
+  #fig = plt.figure(figsize=(7, 7))
   fig2 = plt.figure(figsize=(7, 7))
-  ax1 = fig.add_subplot(111)
+  #ax1 = fig.add_subplot(111)
   plt.ion()
   network_size = [LightCurve.INPUT_SIZE, 8, 8, LightCurve.OUTPUT_SIZE]
   nn = Network(network_size)
@@ -159,15 +160,16 @@ def main():
   labels += ["" for i in range(sum(network_size[1:-1]))]
   labels += [ev().__class__.__name__ for ev in types]
 
-  q = mp.Queue(maxsize=1000)
+  q = mp.Queue(maxsize=3000)
   pool = mp.Pool(num_cores, initializer=generation_process, initargs=(q, types))
   accuracies = []
   total_gen = 0
+  iterations = 0
   while True:
     training_data = [q.get() for _ in range(500)]
     total_gen += len(training_data)
-
-    draw_plot(get_event(types))
+    iterations += 1
+    #draw_plot(get_event(types))
 
     _, _, _, training_accuracy = nn.SGD(np.array(training_data),10,50,2,monitor_training_accuracy=True)
 
@@ -175,22 +177,21 @@ def main():
     accuracies.insert(0, avg_acc)
     accuracies = accuracies[:150]
     sys.stdout.flush()
+    if iterations % 30 == 0:
+      ax2 = fig2.gca()
+      draw_neural_net(ax2, .05, .95, .08, .98, nn, None, labels)
 
-    ax2 = fig2.gca()
+      avg_acc = sum(accuracies) / len(accuracies)
+      txt = ax2.text(0.5, 0.06, "Current accuracy: "+str(round(100*avg_acc,2))+"%", color="#000000FF", ha='center', va='center')
+      txt = ax2.text(0.5, 0.03, "Total lightcurves generated: "+human_format(total_gen), color="#000000FF", ha='center', va='center')
+      txt = ax2.text(0.5, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), color="#666666FF", ha='center', va='center')
+      nn.save(datetime.datetime.now().strftime("NN-%Y-%m-%d.json"))
+    #plt.show()
+    #fig.canvas.draw()
+    #fig.canvas.flush_events()
 
-    draw_neural_net(ax2, .05, .95, .08, .98, nn, None, labels)
-
-    avg_acc = sum(accuracies) / len(accuracies)
-    txt = ax2.text(0.5, 0.06, "Current accuracy: "+str(round(100*avg_acc,2))+"%", color="#000000FF", ha='center', va='center')
-    txt = ax2.text(0.5, 0.03, "Total lightcurves generated: "+human_format(total_gen), color="#000000FF", ha='center', va='center')
-    txt = ax2.text(0.5, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), color="#666666FF", ha='center', va='center')
-    nn.save(datetime.datetime.now().strftime("NN-%Y-%m-%d.json"))
-    plt.show()
-    fig.canvas.draw()
-    fig.canvas.flush_events()
-
-    fig2.savefig('nn.png')
-    fig2.clf()
+      fig2.savefig('nn.png')
+      fig2.clf()
 
 
 
