@@ -35,7 +35,7 @@ class LightCurve:
     if self.curve is None:
       self.generate_curve()
 
-    input_list = [self.ac_width, self.ac_max, self.ac_symm_max, self.ac_symm_width]
+    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max]
     inputs = np.zeros((self.INPUT_SIZE, 1))
     for i in range(self.INPUT_SIZE):
       inputs[i] = input_list[i]()
