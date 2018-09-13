@@ -65,7 +65,7 @@ class LightCurve:
     return np.mean(self.curve[:, self.CURVE_SIGMA]) / statistics.stdev(self.curve[:, self.CURVE_Y])
 
   def fitted_slope(self):
-    return np.polyfit(self.curve[:, self.CURVE_X], self.curve[:, self.CURVE_Y], 1)[0]
+    return np.polyfit(self.curve[:, self.CURVE_X], self.curve[:, self.CURVE_Y], 1, w=(1/self.curve[:, self.CURVE_SIGMA]))[0]
 
   def autocorrelate(self, rev=False):
     if self.corr[int(rev)] is not None:
