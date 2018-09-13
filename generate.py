@@ -12,7 +12,7 @@ plot = None
 
 def draw_plot(event):
     global plot, ax, eline
-    event = MicroLensing()
+    event = Periodic()
     event.generate_curve()
     time_list, mag_list, sigma, no_noise_time, no_noise = np.split(event.curve, 5, 1)
 

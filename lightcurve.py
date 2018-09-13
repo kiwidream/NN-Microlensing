@@ -13,7 +13,7 @@ class LightCurve:
   CURVE_Y_CLEAN = 4
 
   INPUT_SIZE = 5
-  OUTPUT_SIZE = 2
+  OUTPUT_SIZE = 3
 
   def __init__(self):
     self.input_neurons = []
@@ -74,7 +74,7 @@ class LightCurve:
     return self.corr[int(rev)]
 
   def expected_outputs(self):
-    light_curves = [NonEvent, MicroLensing]
+    light_curves = [NonEvent, MicroLensing, Periodic]
     outputs = np.zeros((self.OUTPUT_SIZE, 1))
     for i in range(self.OUTPUT_SIZE):
       outputs[i, 0] = int(isinstance(self, light_curves[i]))
@@ -170,6 +170,34 @@ class MicroLensing(LightCurve):
     """ Calculates the relative lens motion 'u' from the time and closest separation
     parameters. """
     return ( (uo**2) + (((t - to) / tE)**2) )** (1/2)
+
+class Periodic(LightCurve):
+
+  def __init__(self, skew=None, amp=None, subAmp=None, subFreq=None, mean=None, period=None):
+    self.params = [skew, amp, subAmp, subFreq, mean, period]
+    self.name = 'Periodic Curve'
+    super().__init__()
+
+  def generate_params(self):
+    if len(self.params) == 6:
+      self.skew, self.amp, self.subAmp, self.subFreq, self.mean, self.period = self.params
+
+    self.skew = self.skew or 1 / random.uniform(1, 10)
+    self.amp = self.amp or random.uniform(1, 30)
+    self.subAmp = self.subAmp or self.amp / random.uniform(3, 15)
+    self.subFreq = self.subFreq or random.uniform(10, 15)
+    self.mean = self.mean or self.amp + random.uniform(150, 1000)
+    self.period = self.period or random.uniform(10, 100)
+
+  def generate_curve(self):
+    phase = random.uniform(0, 700)
+    self.curve = np.zeros((self.size, 5))
+    self.curve[:, self.CURVE_X] = np.linspace(phase, self.size + phase, self.size)
+    self.curve[:, self.CURVE_Y] = self.mean + self.amp * np.sin(self.curve[:, self.CURVE_X] / self.period + np.sin(self.skew * self.curve[:, self.CURVE_X] / self.period)) + self.subAmp * np.sin(self.subFreq * self.curve[:, self.CURVE_X] / self.period)
+
+    self.apply_filters()
+
+    return self.curve
 
 if __name__ == '__main__':
   ml = MicroLensing()
