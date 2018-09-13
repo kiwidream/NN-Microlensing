@@ -3,6 +3,7 @@ import random
 import time
 import statistics
 from raw_nodes import excursion
+from scipy.ndimage import gaussian_filter
 
 class LightCurve:
 
@@ -11,6 +12,9 @@ class LightCurve:
   CURVE_SIGMA = 2
   CURVE_X_CLEAN = 3
   CURVE_Y_CLEAN = 4
+
+  # This varies the smoothing accuracy when using gaussian_filter
+  SMOOTH_SIGMA = 10
 
   INPUT_SIZE = 6
   OUTPUT_SIZE = 3
@@ -22,6 +26,7 @@ class LightCurve:
     self.size = 600
     self.percent_noise = 0.02
     self.corr = [None, None]
+    self.smoothed = None
     self.generate_params()
 
   def generate_params(self):
@@ -64,7 +69,7 @@ class LightCurve:
     if self.corr[int(rev)] is not None:
       return self.corr[int(rev)]
 
-    y = self.curve[:, self.CURVE_Y]
+    y = self.interpolate_smooth()
     y2 = np.flip(y, axis=0) if rev else y
     corr = np.correlate(y, y2, mode='same')
     n = len(corr)
@@ -75,6 +80,17 @@ class LightCurve:
     self.corr[int(rev)] = ac / ac[0] # Normalise
 
     return self.corr[int(rev)]
+
+  def interpolate_smooth(self):
+    if self.smoothed is not None:
+      return self.smoothed
+
+    t = np.linspace(self.curve[0, self.CURVE_X], self.curve[-1, self.CURVE_X], self.size)
+    interpolated = np.interp(t, self.curve[:, self.CURVE_X], self.curve[:, self.CURVE_Y])
+
+    self.smoothed = gaussian_filter(interpolated, self.SMOOTH_SIGMA)
+    return self.smoothed
+
 
   def expected_outputs(self):
     light_curves = [NonEvent, MicroLensing, Periodic]
