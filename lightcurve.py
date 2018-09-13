@@ -12,7 +12,7 @@ class LightCurve:
   CURVE_X_CLEAN = 3
   CURVE_Y_CLEAN = 4
 
-  INPUT_SIZE = 5
+  INPUT_SIZE = 6
   OUTPUT_SIZE = 3
 
   def __init__(self):
@@ -36,7 +36,7 @@ class LightCurve:
     if self.curve is None:
       self.generate_curve()
 
-    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion]
+    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion, self.noise_est]
     inputs = np.zeros((self.INPUT_SIZE, 1))
     for i in range(self.INPUT_SIZE):
       inputs[i] = input_list[i]()
@@ -56,6 +56,9 @@ class LightCurve:
 
   def excursion(self):
     return excursion(self.curve[:, :2])
+
+  def noise_est(self):
+    return np.mean(self.curve[:, self.CURVE_SIGMA]) / statistics.stdev(self.curve[:, self.CURVE_Y])
 
   def autocorrelate(self, rev=False):
     if self.corr[int(rev)] is not None:
