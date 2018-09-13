@@ -16,7 +16,7 @@ class LightCurve:
   # This varies the smoothing accuracy when using gaussian_filter
   SMOOTH_SIGMA = 10
 
-  INPUT_SIZE = 6
+  INPUT_SIZE = 7
   OUTPUT_SIZE = 3
 
   def __init__(self):
@@ -41,7 +41,7 @@ class LightCurve:
     if self.curve is None:
       self.generate_curve()
 
-    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion, self.noise_est]
+    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion, self.noise_est, self.fitted_slope]
     inputs = np.zeros((self.INPUT_SIZE, 1))
     for i in range(self.INPUT_SIZE):
       inputs[i] = input_list[i]()
@@ -64,6 +64,9 @@ class LightCurve:
 
   def noise_est(self):
     return np.mean(self.curve[:, self.CURVE_SIGMA]) / statistics.stdev(self.curve[:, self.CURVE_Y])
+
+  def fitted_slope(self):
+    return np.polyfit(self.curve[:, self.CURVE_X], self.curve[:, self.CURVE_Y], 1)[0]
 
   def autocorrelate(self, rev=False):
     if self.corr[int(rev)] is not None:

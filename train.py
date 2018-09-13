@@ -152,11 +152,11 @@ def main():
   fig2 = plt.figure(figsize=(7, 7))
   #ax1 = fig.add_subplot(111)
   plt.ion()
-  network_size = [LightCurve.INPUT_SIZE, 8, 8, LightCurve.OUTPUT_SIZE]
+  network_size = [LightCurve.INPUT_SIZE, 10, 10, 10, LightCurve.OUTPUT_SIZE]
   nn = Network(network_size)
   recent_progress = []
   types = [MicroLensing, NonEvent, Periodic]
-  labels = ['AC_std', 'AC_max', 'SYM_std', 'SYM_max', 'excursion', 'noise_est']
+  labels = ['AC_std', 'AC_max', 'SYM_std', 'SYM_max', 'excursion', 'noise', 'slope']
   labels += ["" for i in range(sum(network_size[1:-1]))]
   labels += [ev().__class__.__name__ for ev in types]
 
