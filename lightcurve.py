@@ -24,7 +24,6 @@ class LightCurve:
     self.params = self.params or []
     self.curve = None
     self.size = 600
-    self.percent_noise = 0.02
     self.corr = [None, None]
     self.smoothed = None
     self.generate_params()
@@ -94,7 +93,6 @@ class LightCurve:
     self.smoothed = gaussian_filter(interpolated, self.SMOOTH_SIGMA)
     return self.smoothed
 
-
   def expected_outputs(self):
     light_curves = [NonEvent, MicroLensing, Periodic]
     outputs = np.zeros((self.OUTPUT_SIZE, 1))
@@ -103,7 +101,7 @@ class LightCurve:
     return outputs
 
   def get_filters(self):
-    return [self.noise_filter, self.sigma_filter, self.patchy_filter]
+    return [self.noise_sigma_filter, self.patchy_filter]
 
   def apply_filters(self):
     self.curve[:, self.CURVE_X_CLEAN] = self.curve[:, self.CURVE_X]
@@ -114,8 +112,12 @@ class LightCurve:
 
     return self.curve
 
-  def noise_filter(self):
-    self.curve[:, self.CURVE_Y] = np.random.normal(0, self.percent_noise, self.size) + self.curve[:, self.CURVE_Y]
+  def noise_sigma_filter(self):
+    n = 10 ** random.randint(-1, 2)
+    errbar = np.abs(np.random.normal(0, n, self.size))
+    noise = np.random.normal(0, errbar)
+    self.curve[:, self.CURVE_SIGMA] = errbar
+    self.curve[:, self.CURVE_Y] = self.curve[:, self.CURVE_Y] + noise
 
   def patchy_filter(self):
     remove = []
@@ -131,10 +133,6 @@ class LightCurve:
 
     self.curve = np.delete(self.curve, remove, axis=0)
     self.size -= len(remove)
-
-  def sigma_filter(self):
-    max_y = max(self.curve[:, self.CURVE_Y])
-    self.curve[:, self.CURVE_SIGMA] = max_y * np.random.normal(self.percent_noise / 2, self.percent_noise / 4, self.size)
 
 class NonEvent(LightCurve):
   def __init__(self, m=None, c=None):
