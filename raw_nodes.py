@@ -5,9 +5,10 @@ MASTER NODE FILE
 
 import numpy as np
 import matplotlib.pyplot as plt
+import generate
+from lightcurve import *
 
 # EXCURSION INPUT NODE BEGINS
-
 """
 Notes on excursion:
         - Generally speaking, below 0.5 indicates a negative excursion while
@@ -45,8 +46,33 @@ def excursion(data):
 #        print("Below: %s" % below_range)
 
         return above_range - below_range
-
 # EXCURSION INPUT NODE ENDS
+        
+# POWER SPECTRUM NODE BEGINS    
+def pspec():
+    event = Lightcurve()
+    event.generate_curve()
+    data, times = event.interpolate_smooth()
+    d_list = []
+    if len(times) % 2 == 0:
+        np.delete(times, 0)
+    for i in range(len(times)-1):
+        d_list.append(times[i+1] - times[i])
+    time_step = np.average(d_list)
+    
+    ps = np.abs(np.fft.fft(data))**2
+    
+    freqs = np.fft.fftfreq(data.size, time_step)
+    
+    ps = ps[0:int(len(ps)/2)]
+    freqs = freqs[0:int(len(freqs)/2)]    
+    
+    idx = np.argsort(freqs)
+    
+    average_freq = np.average(freqs[idx], weights=ps[idx])
+
+    return average_freq
+# POWER SPECTRUM NODE ENDS
 
 if __name__ == "__main__":
         data = np.genfromtxt('OGLE-LMC-CEP-0001.txt', delimiter=' ', dtype=float)
