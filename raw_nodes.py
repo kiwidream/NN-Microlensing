@@ -5,8 +5,8 @@ MASTER NODE FILE
 
 import numpy as np
 import matplotlib.pyplot as plt
-import generate
 from lightcurve import *
+from scipy import signal
 
 # EXCURSION INPUT NODE BEGINS
 """
@@ -20,22 +20,22 @@ Notes on excursion:
 
 """
 def excursion(data):
-        times = data[:,0]
-        mags = data[:,1]
-        normalised_mags = []
-        for mag in mags:
-                z = (mag - min(mags)) / (max(mags) - min(mags))
-                normalised_mags.append(z)
-        normalised_mean = np.mean(normalised_mags)
-        above = []
-        below = []
-        for mag in normalised_mags:
-                if mag >= normalised_mean:
-                        above.append(mag)
-                else:
-                        below.append(mag)
-        above_range = (max(above) - min(above))
-        below_range = (max(below) - min(below))
+    times = data[:,0]
+    mags = data[:,1]
+    normalised_mags = []
+    for mag in mags:
+        z = (mag - min(mags)) / (max(mags) - min(mags))
+        normalised_mags.append(z)
+    normalised_mean = np.mean(normalised_mags)
+    above = []
+    below = []
+    for mag in normalised_mags:
+        if mag >= normalised_mean:
+            above.append(mag)
+        else:
+            below.append(mag)
+    above_range = (max(above) - min(above))
+    below_range = (max(below) - min(below))
 
 #        """Uncomment to test"""
 #        if above_range > below_range:
@@ -45,36 +45,26 @@ def excursion(data):
 #        print("Above: %s" % above_range)
 #        print("Below: %s" % below_range)
 
-        return above_range - below_range
+    return above_range, below_range
 # EXCURSION INPUT NODE ENDS
-        
-# POWER SPECTRUM NODE BEGINS    
-def pspec():
-    event = Lightcurve()
-    event.generate_curve()
-    data, times = event.interpolate_smooth()
-    d_list = []
-    if len(times) % 2 == 0:
-        np.delete(times, 0)
-    for i in range(len(times)-1):
-        d_list.append(times[i+1] - times[i])
-    time_step = np.average(d_list)
-    
-    ps = np.abs(np.fft.fft(data))**2
-    
-    freqs = np.fft.fftfreq(data.size, time_step)
-    
-    ps = ps[0:int(len(ps)/2)]
-    freqs = freqs[0:int(len(freqs)/2)]    
-    
-    idx = np.argsort(freqs)
-    
-    average_freq = np.average(freqs[idx], weights=ps[idx])
 
-    return average_freq
+# POWER SPECTRUM NODE BEGINS
+def pspec(event):
+    data, times = event.curve[:, event.CURVE_Y], event.curve[:, event.CURVE_X]
+
+    rate = 30
+    t = np.arange(times[0], times[-1], 1/rate)
+    data -= np.mean(data)
+
+    ps = np.log10(np.abs(np.fft.rfft(data)))
+
+    freqs = np.linspace(0, rate/2, len(ps))
+    ps -= np.mean(ps)
+    ps = np.maximum(ps, 0)
+    return np.average(freqs, weights=(ps*(freqs ** 2)))
 # POWER SPECTRUM NODE ENDS
 
 if __name__ == "__main__":
-        data = np.genfromtxt('OGLE-LMC-CEP-0001.txt', delimiter=' ', dtype=float)
-        print(excursion(data))
+    data = np.genfromtxt('OGLE-LMC-CEP-0001.txt', delimiter=' ', dtype=float)
+    print(excursion(data))
 

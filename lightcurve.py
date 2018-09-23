@@ -2,7 +2,7 @@ import numpy as np
 import random
 import time
 import statistics
-from raw_nodes import excursion
+from raw_nodes import excursion, pspec
 from scipy.ndimage import gaussian_filter
 
 class LightCurve:
@@ -14,9 +14,9 @@ class LightCurve:
   CURVE_Y_CLEAN = 4
 
   # This varies the smoothing accuracy when using gaussian_filter
-  SMOOTH_SIGMA = 10
+  SMOOTH_SIGMA = 2
 
-  INPUT_SIZE = 7
+  INPUT_SIZE = 9
   OUTPUT_SIZE = 3
 
   def __init__(self):
@@ -26,6 +26,7 @@ class LightCurve:
     self.size = 600
     self.corr = [None, None]
     self.smoothed = None
+    self.excurs = None
     self.generate_params()
 
   def generate_params(self):
@@ -40,7 +41,7 @@ class LightCurve:
     if self.curve is None:
       self.generate_curve()
 
-    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion, self.noise_est, self.fitted_slope]
+    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion_above, self.excursion_below, self.noise_est, self.fitted_slope, self.power_spec]
     inputs = np.zeros((self.INPUT_SIZE, 1))
     for i in range(self.INPUT_SIZE):
       inputs[i] = input_list[i]()
@@ -58,8 +59,19 @@ class LightCurve:
   def ac_symm_width(self):
     return statistics.stdev(self.autocorrelate(True))
 
-  def excursion(self):
-    return excursion(self.curve[:, :2])
+  def excursion_above(self):
+    if self.excurs is not None:
+      return self.excurs[0]
+
+    self.excurs = excursion(self.curve[:, :2])
+    return self.excurs[0]
+
+  def excursion_below(self):
+    if self.excurs is not None:
+      return self.excurs[1]
+
+    self.excurs = excursion(self.curve[:, :2])
+    return self.excurs[1]
 
   def noise_est(self):
     return np.mean(self.curve[:, self.CURVE_SIGMA]) / statistics.stdev(self.curve[:, self.CURVE_Y])
@@ -67,11 +79,14 @@ class LightCurve:
   def fitted_slope(self):
     return np.polyfit(self.curve[:, self.CURVE_X], self.curve[:, self.CURVE_Y], 1, w=(1/self.curve[:, self.CURVE_SIGMA]))[0]
 
+  def power_spec(self):
+    return pspec(self)
+
   def autocorrelate(self, rev=False):
     if self.corr[int(rev)] is not None:
       return self.corr[int(rev)]
 
-    y = self.interpolate_smooth()
+    t, y = self.interpolate_smooth()
     y2 = np.flip(y, axis=0) if rev else y
     corr = np.correlate(y, y2, mode='same')
     n = len(corr)
@@ -87,10 +102,10 @@ class LightCurve:
     if self.smoothed is not None:
       return self.smoothed
 
-    t = np.linspace(self.curve[0, self.CURVE_X], self.curve[-1, self.CURVE_X], self.size)
+    t = np.linspace(self.curve[0, self.CURVE_X], self.curve[-1, self.CURVE_X], self.size * 5)
     interpolated = np.interp(t, self.curve[:, self.CURVE_X], self.curve[:, self.CURVE_Y])
 
-    self.smoothed = gaussian_filter(interpolated, self.SMOOTH_SIGMA)
+    self.smoothed = t, gaussian_filter(interpolated, self.SMOOTH_SIGMA)
     return self.smoothed
 
   def expected_outputs(self):
@@ -113,7 +128,7 @@ class LightCurve:
     return self.curve
 
   def noise_sigma_filter(self):
-    n = 10 ** random.randint(-1, 2)
+    n = 10 ** random.randint(-1, 1)
     errbar = np.abs(np.random.normal(0, n, self.size))
     noise = np.random.normal(0, errbar)
     self.curve[:, self.CURVE_SIGMA] = errbar
@@ -213,6 +228,7 @@ class Periodic(LightCurve):
     phase = random.uniform(0, 700)
     self.curve = np.zeros((self.size, 5))
     self.curve[:, self.CURVE_X] = np.linspace(phase, self.size + phase, self.size)
+    t = self.curve[:, self.CURVE_X]
     self.curve[:, self.CURVE_Y] = self.mean + self.amp * np.sin(self.curve[:, self.CURVE_X] / self.period + np.sin(self.skew * self.curve[:, self.CURVE_X] / self.period)) + self.subAmp * np.sin(self.subFreq * self.curve[:, self.CURVE_X] / self.period)
 
     self.apply_filters()
