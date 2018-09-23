@@ -80,7 +80,7 @@ class LightCurve:
     return np.polyfit(self.curve[:, self.CURVE_X], self.curve[:, self.CURVE_Y], 1, w=(1/self.curve[:, self.CURVE_SIGMA]))[0]
 
   def power_spec(self):
-    return pspec(self)
+    return pspec(self.curve[:, :2])
 
   def autocorrelate(self, rev=False):
     if self.corr[int(rev)] is not None:
@@ -102,7 +102,7 @@ class LightCurve:
     if self.smoothed is not None:
       return self.smoothed
 
-    t = np.linspace(self.curve[0, self.CURVE_X], self.curve[-1, self.CURVE_X], self.size * 5)
+    t = np.linspace(self.curve[0, self.CURVE_X], self.curve[-1, self.CURVE_X], self.size)
     interpolated = np.interp(t, self.curve[:, self.CURVE_X], self.curve[:, self.CURVE_Y])
 
     self.smoothed = t, gaussian_filter(interpolated, self.SMOOTH_SIGMA)
