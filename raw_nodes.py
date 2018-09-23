@@ -5,8 +5,6 @@ MASTER NODE FILE
 
 import numpy as np
 import matplotlib.pyplot as plt
-from lightcurve import *
-from scipy import signal
 
 # EXCURSION INPUT NODE BEGINS
 """
@@ -49,19 +47,20 @@ def excursion(data):
 # EXCURSION INPUT NODE ENDS
 
 # POWER SPECTRUM NODE BEGINS
-def pspec(event):
-    data, times = event.curve[:, event.CURVE_Y], event.curve[:, event.CURVE_X]
+def pspec(data):
+    times = data[:,0]
+    data = data[:,1]
 
     rate = 30
     t = np.arange(times[0], times[-1], 1/rate)
-    data -= np.mean(data)
+    data_shift = data - np.mean(data)
 
-    ps = np.log10(np.abs(np.fft.rfft(data)))
+    ps = np.maximum(np.log10(np.abs(np.fft.rfft(data_shift))), 0)
 
     freqs = np.linspace(0, rate/2, len(ps))
-    ps -= np.mean(ps)
-    ps = np.maximum(ps, 0)
-    return np.average(freqs, weights=(ps*(freqs ** 2)))
+    ps_shift = ps - np.mean(ps)
+    ps_shift = np.maximum(ps_shift, 0)
+    return np.average(freqs, weights=(ps_shift * freqs))
 # POWER SPECTRUM NODE ENDS
 
 if __name__ == "__main__":

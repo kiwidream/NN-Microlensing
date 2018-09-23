@@ -156,7 +156,7 @@ def main():
   nn = Network(network_size)
   recent_progress = []
   types = [MicroLensing, NonEvent, Periodic]
-  labels = ['AC_std', 'AC_max', 'SYM_std', 'SYM_max', 'excursion', 'noise', 'slope']
+  labels = ['AC_std', 'AC_max', 'SYM_std', 'SYM_max', 'excursion_above', 'excursion_below', 'noise', 'slope', 'power_spec']
   labels += ["" for i in range(sum(network_size[1:-1]))]
   labels += [ev().__class__.__name__ for ev in types]
 
@@ -170,7 +170,6 @@ def main():
     total_gen += len(training_data)
     iterations += 1
     #draw_plot(get_event(types))
-
     _, _, _, training_accuracy = nn.SGD(np.array(training_data),10,50,2,monitor_training_accuracy=True)
 
     avg_acc = sum(training_accuracy) / len(training_accuracy) / len(training_data)
