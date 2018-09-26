@@ -43,7 +43,7 @@ def excursion(data):
 #        print("Above: %s" % above_range)
 #        print("Below: %s" % below_range)
 
-    return above_range, below_range
+    return above_range - below_range
 # EXCURSION INPUT NODE ENDS
 
 # POWER SPECTRUM NODE BEGINS
