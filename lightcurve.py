@@ -76,15 +76,16 @@ class LightCurve:
       return self.corr[int(rev)]
 
     t, y = self.interpolate_smooth()
-    y2 = np.flip(y, axis=0) if rev else y
-    corr = np.correlate(y, y2, mode='same')
+    y_shift = y - np.mean(y)
+    print(y_shift)
+    y2 = np.flip(y_shift, axis=0) if rev else y_shift
+    corr = np.correlate(y_shift, y2, mode='same')
     n = len(corr)
 
     lengths = range(n, n//2, -1)
     ac = corr[n//2:] / lengths
 
     self.corr[int(rev)] = ac / ac[0] # Normalise
-
     return self.corr[int(rev)]
 
   def interpolate_smooth(self):
