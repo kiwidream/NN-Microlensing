@@ -51,7 +51,7 @@ def pspec(data):
     times = data[:,0]
     data = data[:,1]
 
-    rate = 30
+    rate = 10
     t = np.arange(times[0], times[-1], 1/rate)
     data_shift = data - np.mean(data)
 
@@ -60,7 +60,8 @@ def pspec(data):
     freqs = np.linspace(0, rate/2, len(ps))
     ps_shift = ps - np.mean(ps)
     ps_shift = np.maximum(ps_shift, 0)
-    return np.average(freqs, weights=(ps_shift * freqs))
+
+    return np.average(ps_shift, weights=freqs), np.mean(ps_shift[np.argmax(ps_shift)]) ** 2
 # POWER SPECTRUM NODE ENDS
 
 if __name__ == "__main__":

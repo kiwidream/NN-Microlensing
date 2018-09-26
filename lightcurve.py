@@ -16,17 +16,18 @@ class LightCurve:
   # This varies the smoothing accuracy when using gaussian_filter
   SMOOTH_SIGMA = 2
 
-  INPUT_SIZE = 8
+  INPUT_SIZE = 9
   OUTPUT_SIZE = 3
 
   def __init__(self):
     self.input_neurons = []
     self.params = self.params or []
     self.curve = None
-    self.size = 600
+    self.size = 1000
     self.corr = [None, None]
     self.smoothed = None
     self.excurs = None
+    self.power = None
     self.generate_params()
 
   def generate_params(self):
@@ -41,7 +42,7 @@ class LightCurve:
     if self.curve is None:
       self.generate_curve()
 
-    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion, self.noise_est, self.fitted_slope, self.power_spec]
+    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion, self.noise_est, self.fitted_slope, self.power_peak, self.power_mean]
     inputs = np.zeros((self.INPUT_SIZE, 1))
     for i in range(self.INPUT_SIZE):
       inputs[i] = input_list[i]()
@@ -68,8 +69,17 @@ class LightCurve:
   def fitted_slope(self):
     return np.polyfit(self.curve[:, self.CURVE_X], self.curve[:, self.CURVE_Y], 1, w=(1/self.curve[:, self.CURVE_SIGMA]))[0]
 
-  def power_spec(self):
-    return pspec(self.curve[:, :2])
+  def power_peak(self):
+    if self.power is None:
+      self.power = pspec(self.curve[:, :2])
+
+    return self.power[1]
+
+  def power_mean(self):
+    if self.power is None:
+      self.power = pspec(self.curve[:, :2])
+
+    return self.power[0]
 
   def autocorrelate(self, rev=False):
     if self.corr[int(rev)] is not None:
@@ -77,7 +87,6 @@ class LightCurve:
 
     t, y = self.interpolate_smooth()
     y_shift = y - np.mean(y)
-    print(y_shift)
     y2 = np.flip(y_shift, axis=0) if rev else y_shift
     corr = np.correlate(y_shift, y2, mode='same')
     n = len(corr)
@@ -118,7 +127,7 @@ class LightCurve:
     return self.curve
 
   def noise_sigma_filter(self):
-    n = 10 ** random.randint(-1, 1)
+    n = random.randint(1, 10) / 100
     errbar = np.abs(np.random.normal(0, n, self.size))
     noise = np.random.normal(0, errbar)
     self.curve[:, self.CURVE_SIGMA] = errbar
@@ -130,11 +139,11 @@ class LightCurve:
     for i in range(self.size):
       if skip > 0:
         skip -= 1
-      if random.randint(0, 1) == 0 or skip > 0:
+      if random.randint(0, 4) < 3 or skip > 0:
         remove.append(i)
         continue
-      if random.randint(0, 20) == 0:
-        skip = random.randint(0, 8)
+      if random.randint(0, 14) == 0:
+        skip = random.randint(0, 30)
 
     self.curve = np.delete(self.curve, remove, axis=0)
     self.size -= len(remove)
@@ -170,8 +179,8 @@ class MicroLensing(LightCurve):
     if len(self.params) == 3:
       self.uo, self.tE, self.to = self.params
 
-    self.uo = self.uo or random.uniform(0, 1.5)
-    self.tE = self.tE or random.uniform(2, 30)
+    self.uo = self.uo or random.uniform(0.5, 1.5)
+    self.tE = self.tE or random.uniform(6, 30)
     self.to = self.to or random.uniform(100, 5000)
 
   def generate_curve(self):
@@ -212,7 +221,7 @@ class Periodic(LightCurve):
     self.subAmp = self.subAmp or self.amp / random.uniform(3, 15)
     self.subFreq = self.subFreq or random.uniform(10, 15)
     self.mean = self.mean or self.amp + random.uniform(150, 1000)
-    self.period = self.period or random.uniform(10, 100)
+    self.period = self.period or random.uniform(5, 30)
 
   def generate_curve(self):
     phase = random.uniform(0, 700)

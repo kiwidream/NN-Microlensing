@@ -156,7 +156,7 @@ def main():
   nn = Network(network_size)
   recent_progress = []
   types = [MicroLensing, NonEvent, Periodic]
-  labels = ['AC_std', 'AC_max', 'SYM_std', 'SYM_max', 'excursion', 'noise', 'slope', 'power_spec']
+  labels = ['AC_std', 'AC_max', 'SYM_std', 'SYM_max', 'excursion', 'noise', 'slope', 'power_peak', 'power_mean']
   labels += ["" for i in range(sum(network_size[1:-1]))]
   labels += [ev().__class__.__name__ for ev in types]
 
@@ -166,7 +166,7 @@ def main():
   total_gen = 0
   iterations = 0
   while True:
-    training_data = [q.get() for _ in range(500)]
+    training_data = [q.get() for _ in range(1000)]
     total_gen += len(training_data)
     iterations += 1
     #draw_plot(get_event(types))
