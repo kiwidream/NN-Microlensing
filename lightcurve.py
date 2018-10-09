@@ -16,12 +16,12 @@ class LightCurve:
   # This varies the smoothing accuracy when using gaussian_filter
   SMOOTH_SIGMA = 2
 
-  INPUT_SIZE = 9
+  INPUT_SIZE = 11
   OUTPUT_SIZE = 3
 
   def __init__(self):
     self.input_neurons = []
-    if not self.params:
+    if not hasattr(self, 'params'):
       self.params = []
     self.curve = None
     self.size = 1000
@@ -39,18 +39,27 @@ class LightCurve:
     """ Overridden by child classes """
     pass
 
+  @staticmethod
+  def sanitise_nan_mean(array):
+    mean_val = np.mean(np.nan_to_num(array))
+    for i in range(len(array)):
+      if np.isnan(array[i]):
+        array[i] = mean_val
+
+    return array
+
   def load_curve(self, times, flux, error):
     self.size = len(times)
     self.curve = np.zeros((self.size, 5))
     self.curve[:, self.CURVE_X] = times
-    self.curve[:, self.CURVE_Y] = flux
-    self.curve[:, self.CURVE_SIGMA] = error
+    self.curve[:, self.CURVE_Y] = self.sanitise_nan_mean(flux)
+    self.curve[:, self.CURVE_SIGMA] = self.sanitise_nan_mean(error)
 
   def calculate_inputs(self):
     if self.curve is None:
       self.generate_curve()
 
-    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion, self.noise_est, self.fitted_slope, self.power_peak, self.power_mean]
+    input_list = [self.ac_width, self.ac_max, self.ac_symm_width, self.ac_symm_max, self.excursion_diff, self.excursion_above, self.excursion_below, self.noise_est, self.fitted_slope, self.power_peak, self.power_mean]
     inputs = np.zeros((self.INPUT_SIZE, 1))
     for i in range(self.INPUT_SIZE):
       inputs[i] = input_list[i]()
@@ -68,8 +77,23 @@ class LightCurve:
   def ac_symm_width(self):
     return statistics.stdev(self.autocorrelate(True))
 
-  def excursion(self):
-    return excursion(self.curve[:, :2])
+  def excursion_diff(self):
+    if self.excurs is None:
+      self.excurs = excursion(self.curve[:, :2])
+
+    return self.excurs[0]
+
+  def excursion_above(self):
+    if self.excurs is None:
+      self.excurs = excursion(self.curve[:, :2])
+
+    return self.excurs[1]
+
+  def excursion_below(self):
+    if self.excurs is None:
+      self.excurs = excursion(self.curve[:, :2])
+
+    return self.excurs[2]
 
   def noise_est(self):
     return np.mean(self.curve[:, self.CURVE_SIGMA]) / statistics.stdev(self.curve[:, self.CURVE_Y])

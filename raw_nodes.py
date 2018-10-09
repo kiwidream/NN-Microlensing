@@ -34,8 +34,9 @@ def excursion(data):
             above.append(mag)
         else:
             below.append(mag)
-    above_range = (max(above) - min(above))
-    below_range = (max(below) - min(below))
+
+    above_range = max(above) - min(above)
+    below_range = max(below) - min(below)
 
 #        """Uncomment to test"""
 #        if above_range > below_range:
@@ -45,7 +46,7 @@ def excursion(data):
 #        print("Above: %s" % above_range)
 #        print("Below: %s" % below_range)
 
-    return above_range - below_range
+    return above_range - below_range, above_range, below_range
 # EXCURSION INPUT NODE ENDS
 
 # POWER SPECTRUM NODE BEGINS
