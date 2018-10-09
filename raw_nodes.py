@@ -5,6 +5,8 @@ MASTER NODE FILE
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import signal
+import sys
 
 # EXCURSION INPUT NODE BEGINS
 """
@@ -20,10 +22,10 @@ Notes on excursion:
 def excursion(data):
     times = data[:,0]
     mags = data[:,1]
-    normalised_mags = []
-    for mag in mags:
-        z = (mag - min(mags)) / (max(mags) - min(mags))
-        normalised_mags.append(z)
+
+    mag_min = min(mags)
+    mag_max = max(mags)
+    normalised_mags = (mags - mag_min) / (mag_max - mag_min)
     normalised_mean = np.mean(normalised_mags)
     above = []
     below = []
@@ -51,17 +53,14 @@ def pspec(data):
     times = data[:,0]
     data = data[:,1]
 
-    rate = 10
-    t = np.arange(times[0], times[-1], 1/rate)
+    rate = 5
+    num_out = 1000
+    periods = np.linspace(0.1, 5, 500)
+    ang_freqs = 2 * np.pi / periods
     data_shift = data - np.mean(data)
+    ps = signal.lombscargle(times, data_shift, ang_freqs, normalize=True)
 
-    ps = np.maximum(np.log10(np.abs(np.fft.rfft(data_shift))), 0)
-
-    freqs = np.linspace(0, rate/2, len(ps))
-    ps_shift = ps - np.mean(ps)
-    ps_shift = np.maximum(ps_shift, 0)
-
-    return np.average(ps_shift, weights=freqs), np.mean(ps_shift[np.argmax(ps_shift)]) ** 2
+    return np.max(ps), np.average(ang_freqs[np.argmax(ps)])
 # POWER SPECTRUM NODE ENDS
 
 if __name__ == "__main__":
