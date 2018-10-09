@@ -170,7 +170,7 @@ def main():
     total_gen += len(training_data)
     iterations += 1
     #draw_plot(get_event(types))
-    _, _, _, training_accuracy = nn.SGD(np.array(training_data),10,50,0.6,monitor_training_accuracy=True)
+    _, _, _, training_accuracy = nn.SGD(np.array(training_data),10,250,0.35,monitor_training_accuracy=True)
 
     avg_acc = sum(training_accuracy) / len(training_accuracy) / len(training_data)
     accuracies.insert(0, avg_acc)
