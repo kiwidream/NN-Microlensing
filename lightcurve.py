@@ -21,7 +21,8 @@ class LightCurve:
 
   def __init__(self):
     self.input_neurons = []
-    self.params = self.params or []
+    if not self.params:
+      self.params = []
     self.curve = None
     self.size = 1000
     self.corr = [None, None]
@@ -38,6 +39,13 @@ class LightCurve:
     """ Overridden by child classes """
     pass
 
+  def load_curve(self, times, flux, error):
+    self.size = len(times)
+    self.curve = np.zeros((self.size, 5))
+    self.curve[:, self.CURVE_X] = times
+    self.curve[:, self.CURVE_Y] = flux
+    self.curve[:, self.CURVE_SIGMA] = error
+
   def calculate_inputs(self):
     if self.curve is None:
       self.generate_curve()
@@ -52,10 +60,10 @@ class LightCurve:
     return statistics.stdev(self.autocorrelate())
 
   def ac_max(self):
-    return max(self.autocorrelate())
+    return max(self.autocorrelate(False, False))
 
   def ac_symm_max(self):
-    return max(self.autocorrelate(True))
+    return max(self.autocorrelate(True, False))
 
   def ac_symm_width(self):
     return statistics.stdev(self.autocorrelate(True))
@@ -81,7 +89,7 @@ class LightCurve:
 
     return self.power[0]
 
-  def autocorrelate(self, rev=False):
+  def autocorrelate(self, rev=False, normalise=True):
     if self.corr[int(rev)] is not None:
       return self.corr[int(rev)]
 
@@ -94,7 +102,9 @@ class LightCurve:
     lengths = range(n, n//2, -1)
     ac = corr[n//2:] / lengths
 
-    self.corr[int(rev)] = ac / ac[0] # Normalise
+    if normalise:
+      self.corr[int(rev)] = ac / ac[0] # Normalise
+
     return self.corr[int(rev)]
 
   def interpolate_smooth(self):
