@@ -152,7 +152,7 @@ def main():
   fig2 = plt.figure(figsize=(7, 7))
   #ax1 = fig.add_subplot(111)
   plt.ion()
-  network_size = [LightCurve.INPUT_SIZE, 10, 10, 10, LightCurve.OUTPUT_SIZE]
+  network_size = [LightCurve.INPUT_SIZE, 6, 6, LightCurve.OUTPUT_SIZE]
   nn = Network(network_size)
   recent_progress = []
   types = [MicroLensing, NonEvent, Periodic]
@@ -170,7 +170,7 @@ def main():
     total_gen += len(training_data)
     iterations += 1
     #draw_plot(get_event(types))
-    _, _, _, training_accuracy = nn.SGD(np.array(training_data),10,50,2,monitor_training_accuracy=True)
+    _, _, _, training_accuracy = nn.SGD(np.array(training_data),10,50,0.6,monitor_training_accuracy=True)
 
     avg_acc = sum(training_accuracy) / len(training_accuracy) / len(training_data)
     accuracies.insert(0, avg_acc)
