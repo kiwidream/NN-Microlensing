@@ -161,7 +161,7 @@ class LightCurve:
     return self.curve
 
   def noise_sigma_filter(self):
-    n = random.randint(1, 10) / 100
+    n = random.randint(1, 100) / 100
     errbar = np.abs(np.random.normal(0, n, self.size))
     noise = np.random.normal(0, errbar)
     self.curve[:, self.CURVE_SIGMA] = errbar
@@ -182,11 +182,22 @@ class LightCurve:
     self.curve = np.delete(self.curve, remove, axis=0)
     self.size -= len(remove)
 
+  def dip_filter(self):
+    flux_mean = abs(np.mean(self.curve[:, self.CURVE_Y_CLEAN]))
+    for i in range(random.randint(0,10)):
+      target_index = random.randint(0, self.size-1)
+      multiplier = random.uniform(0.6, 1.2)
+      self.curve[target_index, self.CURVE_Y] -= flux_mean * multiplier
+
+
 class NonEvent(LightCurve):
   def __init__(self, m=None, c=None):
     self.params = [m, c]
     self.name = 'Non-Event Curve'
     super().__init__()
+
+  def get_filters(self):
+    return [self.noise_sigma_filter, self.patchy_filter, self.dip_filter]
 
   def generate_params(self):
     if len(self.params) == 2:
