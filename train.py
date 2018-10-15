@@ -150,9 +150,10 @@ def main():
 
   #fig = plt.figure(figsize=(7, 7))
   fig2 = plt.figure(figsize=(7, 7))
+  fig3 = plt.figure(figsize=(7, 7))
   #ax1 = fig.add_subplot(111)
   plt.ion()
-  network_size = [LightCurve.INPUT_SIZE, 6, 6, LightCurve.OUTPUT_SIZE]
+  network_size = [LightCurve.INPUT_SIZE, 8, 8, LightCurve.OUTPUT_SIZE]
   nn = Network(network_size)
   recent_progress = []
   types = [MicroLensing, NonEvent, Periodic]
@@ -165,8 +166,13 @@ def main():
   accuracies = []
   total_gen = 0
   iterations = 0
+
+  rolling_accuracies = [[], [], []]
+  batch_size = 1000
+  batches_per_save = 30
+
   while True:
-    training_data = [q.get() for _ in range(1000)]
+    training_data = [q.get() for _ in range(batch_size)]
     total_gen += len(training_data)
     iterations += 1
     #draw_plot(get_event(types))
@@ -174,20 +180,40 @@ def main():
 
     avg_acc = sum(training_accuracy) / len(training_accuracy) / len(training_data)
     accuracies.insert(0, avg_acc)
-    accuracies = accuracies[:150]
+    accuracies = accuracies[:300]
     sys.stdout.flush()
-    if iterations % 30 == 0:
+
+    if iterations % batches_per_save == 0:
       ax2 = fig2.gca()
       draw_neural_net(ax2, .05, .95, .08, .98, nn, None, labels)
 
-      avg_acc = sum(accuracies) / len(accuracies)
-      txt = ax2.text(0.5, 0.06, "Current accuracy: "+str(round(100*avg_acc,2))+"%", color="#000000FF", ha='center', va='center')
+      avg_acc_300 = sum(accuracies) / len(accuracies)
+      avg_acc_150 = sum(accuracies[:150]) / min(len(accuracies), 150)
+      avg_acc_50 = sum(accuracies[:50]) / min(len(accuracies), 50)
+
+      rolling_accuracies[0].append(round(100*avg_acc_300,2))
+      rolling_accuracies[1].append(round(100*avg_acc_150,2))
+      rolling_accuracies[2].append(round(100*avg_acc_50,2))
+
+      txt = ax2.text(0.5, 0.06, "Current accuracy: "+str(round(100*avg_acc_150,2))+"%", color="#000000FF", ha='center', va='center')
       txt = ax2.text(0.5, 0.03, "Total lightcurves generated: "+human_format(total_gen), color="#000000FF", ha='center', va='center')
       txt = ax2.text(0.5, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), color="#666666FF", ha='center', va='center')
       nn.save(datetime.datetime.now().strftime("NN-%Y-%m-%d.json"))
-    #plt.show()
-    #fig.canvas.draw()
-    #fig.canvas.flush_events()
+
+      ax3 = fig3.gca()
+
+      accuracy_x = np.linspace(0, len(rolling_accuracies[0]) * batch_size * batches_per_save, len(rolling_accuracies[0]))
+
+      ax3.plot(accuracy_x, rolling_accuracies[0], color=(0,0,1,1), label='Last 300K')
+      ax3.plot(accuracy_x, rolling_accuracies[1], color=(0,0,1,0.5), label='Last 150K')
+      ax3.plot(accuracy_x, rolling_accuracies[2], color=(0,0,1,0.25), label='Last 50K')
+      ax3.legend()
+      ax3.set_xlabel("Lightcurves Processed")
+      ax3.set_ylabel("Average Accuracy (%)")
+      ax3.set_title("Network Accuracy")
+
+      fig3.savefig('accuracy.png')
+      fig3.clf()
 
       fig2.savefig('nn.png')
       fig2.clf()
