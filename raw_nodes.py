@@ -35,8 +35,9 @@ def excursion(data):
         else:
             below.append(mag)
 
-    above_range = max(above) - min(above)
-    below_range = max(below) - min(below)
+    percentile = 99
+    above_range = np.percentile(above, percentile) - np.percentile(above, 100 - percentile)
+    below_range = np.percentile(below, percentile) - np.percentile(below, 100 - percentile)
 
 #        """Uncomment to test"""
 #        if above_range > below_range:
